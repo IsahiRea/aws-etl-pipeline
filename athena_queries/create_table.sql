@@ -8,7 +8,6 @@ CREATE EXTERNAL TABLE IF NOT EXISTS etl_pipeline_db.processed_data (
     -- Update these columns to match your actual dataset schema
     provider_id         STRING,
     provider_name       STRING,
-    state               STRING,
     total_discharges    INT,
     avg_covered_charges DOUBLE,
     avg_total_payments  DOUBLE,
@@ -16,6 +15,10 @@ CREATE EXTERNAL TABLE IF NOT EXISTS etl_pipeline_db.processed_data (
     _etl_processed_at   TIMESTAMP,
     _etl_source         STRING
 )
+PARTITIONED BY (state STRING)
 STORED AS PARQUET
 LOCATION 's3://YOUR_PROCESSED_BUCKET/data/'
 TBLPROPERTIES ('parquet.compress' = 'SNAPPY');
+
+-- After creating the table, load partitions:
+MSCK REPAIR TABLE etl_pipeline_db.processed_data;

@@ -63,6 +63,7 @@ print(f"[ETL] Writing processed data to: {PROCESSED_PATH}")
 
 cleaned_df.write \
     .mode("overwrite") \
+    .partitionBy("state") \
     .option("compression", "snappy") \
     .parquet(PROCESSED_PATH)
 
