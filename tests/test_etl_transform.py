@@ -5,6 +5,7 @@ import pytest
 try:
     from pyspark.sql import SparkSession
     from pyspark.sql import functions as F
+    from pyspark.sql.types import StructType, StructField, StringType
 
     _spark_session = (
         SparkSession.builder.master("local[1]")
@@ -63,9 +64,14 @@ def test_schema_validation_passes_with_all_columns():
 
 @requires_spark
 def test_drops_all_null_rows(spark):
+    schema = StructType([
+        StructField("provider_id", StringType(), True),
+        StructField("provider_name", StringType(), True),
+        StructField("state", StringType(), True),
+    ])
     df = spark.createDataFrame(
         [("10001", "Hospital A", "TX"), (None, None, None)],
-        ["provider_id", "provider_name", "state"],
+        schema,
     )
     result = df.dropna(how="all")
     assert result.count() == 1
@@ -74,9 +80,14 @@ def test_drops_all_null_rows(spark):
 
 @requires_spark
 def test_keeps_partial_null_rows(spark):
+    schema = StructType([
+        StructField("provider_id", StringType(), True),
+        StructField("provider_name", StringType(), True),
+        StructField("state", StringType(), True),
+    ])
     df = spark.createDataFrame(
         [("10001", None, "TX"), (None, None, None)],
-        ["provider_id", "provider_name", "state"],
+        schema,
     )
     result = df.dropna(how="all")
     assert result.count() == 1
@@ -138,4 +149,5 @@ def test_partitioned_write(spark, tmp_path):
 
     result = spark.read.parquet(output_path)
     assert result.count() == 3
-    assert set(result.select("state").distinct().toPandas()["state"]) == {"TX", "CA"}
+    states = {row["state"] for row in result.select("state").distinct().collect()}
+    assert states == {"TX", "CA"}
