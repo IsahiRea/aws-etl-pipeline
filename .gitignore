@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AWS / Lambda packaging
+*.zip
+.aws-sam/
+
+# Environment
+.env
+.env.*
+
+# PySpark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / Coverage
+.pytest_cache/
+htmlcov/
+.coverage
