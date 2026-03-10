@@ -13,10 +13,10 @@ A fully automated, serverless data pipeline that ingests raw data, transforms it
 
 ```mermaid
 flowchart LR
-    A[CSV/JSON Upload] --> B[S3 Raw Bucket\nincoming/]
-    B -->|S3 Event| C[Lambda\ntrigger_glue.py]
-    C -->|StartJobRun| D[Glue ETL Job\netl_transform.py]
-    D --> E[S3 Processed Bucket\ndata/state=XX/]
+    A[CSV/JSON Upload] --> B[S3 Raw Bucket]
+    B -->|S3 Event| C[AWS Lambda]
+    C -->|StartJobRun| D[AWS Glue ETL]
+    D --> E[S3 Processed Bucket]
     E --> F[Glue Crawler]
     F --> G[Glue Data Catalog]
     G --> H[Amazon Athena]
