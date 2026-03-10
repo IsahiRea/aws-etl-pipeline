@@ -2,6 +2,25 @@
 
 Step-by-step instructions to deploy the ETL pipeline on AWS.
 
+## Recommended: Deploy with SAM
+
+The fastest way to deploy everything is with the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html):
+
+```bash
+sam build
+sam deploy --guided
+```
+
+This creates all resources automatically: S3 buckets, Lambda function with S3 trigger, Glue job, Glue database, Glue crawler, and IAM roles.
+
+After deploying, skip to [Step 8: Query with Athena](#8-query-with-athena) and [Step 9: Test the Full Pipeline](#9-test-the-full-pipeline).
+
+---
+
+## Manual Setup
+
+If you prefer to set up each resource individually, follow the steps below.
+
 ## 1. IAM Roles
 
 ### Glue Role (`GlueETLRole`)
@@ -54,8 +73,10 @@ Via AWS Console:
 2. Name: `etl-pipeline-job`
 3. IAM Role: `GlueETLRole`
 4. Type: Spark
-5. Script path: `s3://your-etl-pipeline-raw/scripts/etl_transform.py`
-6. Add job parameters:
+5. Glue version: `4.0`
+6. Worker type: `G.1X` (2 workers minimum)
+7. Script path: `s3://your-etl-pipeline-raw/scripts/etl_transform.py`
+8. Add job parameters:
    - `--raw_bucket` → `your-etl-pipeline-raw`
    - `--processed_bucket` → `your-etl-pipeline-processed`
 
@@ -102,8 +123,9 @@ Via AWS Console:
 
 1. Go to **Amazon Athena → Query Editor**
 2. Set output location: `s3://your-etl-pipeline-processed/athena-results/`
-3. Run `athena_queries/create_table.sql`
-4. Run queries from `athena_queries/sample_queries.sql`
+3. Run `athena_queries/create_table.sql` (creates the partitioned external table)
+4. Run `MSCK REPAIR TABLE etl_pipeline_db.processed_data;` to discover partition directories (`state=XX/`)
+5. Run queries from `athena_queries/sample_queries.sql`
 
 ---
 
@@ -116,5 +138,5 @@ aws s3 cp data/raw/sample.csv s3://your-etl-pipeline-raw/incoming/sample.csv
 Then check:
 - Lambda logs in **CloudWatch**
 - Glue job run status in **AWS Glue → Jobs**
-- Processed files in `s3://your-etl-pipeline-processed/data/`
-- Query results in **Athena**
+- Processed files in `s3://your-etl-pipeline-processed/data/state=XX/` (partitioned by state)
+- Query results in **Athena** (run `MSCK REPAIR TABLE` again if new partitions were added)
