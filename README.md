@@ -3,6 +3,7 @@
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 ![AWS SAM](https://img.shields.io/badge/IaC-AWS%20SAM-orange)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
+![CI](https://github.com/IsahiRea/aws-etl-pipeline/actions/workflows/ci.yml/badge.svg)
 
 A fully automated, serverless data pipeline that ingests raw data, transforms it using AWS Glue (PySpark), catalogs it, and enables SQL querying via Amazon Athena — triggered automatically by S3 file uploads via AWS Lambda.
 
@@ -16,10 +17,11 @@ flowchart LR
     B -->|S3 Event| C[Lambda\ntrigger_glue.py]
     C -->|StartJobRun| D[Glue ETL Job\netl_transform.py]
     D --> E[S3 Processed Bucket\ndata/state=XX/]
-    D --> F[Glue Data Catalog]
-    F --> G[Amazon Athena]
-    E --> G
-    G --> H[QuickSight / Power BI]
+    E --> F[Glue Crawler]
+    F --> G[Glue Data Catalog]
+    G --> H[Amazon Athena]
+    E --> H
+    H --> I[QuickSight / Power BI]
 ```
 
 ---
@@ -41,6 +43,8 @@ flowchart LR
 
 ```
 aws-etl-pipeline/
+├── .github/workflows/
+│   └── ci.yml                  # GitHub Actions CI (pytest on push/PR)
 ├── glue_jobs/
 │   └── etl_transform.py        # PySpark ETL: clean, validate, partition, write Parquet
 ├── lambda/
@@ -56,6 +60,7 @@ aws-etl-pipeline/
 ├── docs/
 │   └── setup_guide.md          # Step-by-step AWS setup instructions
 ├── template.yaml               # SAM template (full IaC)
+├── pytest.ini                  # Test configuration
 ├── requirements.txt
 └── requirements-dev.txt
 ```
@@ -70,7 +75,7 @@ This project includes **synthetic sample data** (`data/raw/sample.csv`) for loca
 |---|---|---|
 | provider_id | STRING | Unique provider identifier |
 | provider_name | STRING | Hospital/facility name |
-| state | STRING | Two-letter state code (partition key) |
+| **state** | **STRING** | **Two-letter state code (Athena partition key)** |
 | total_discharges | INT | Number of patient discharges |
 | avg_covered_charges | DOUBLE | Average charges billed |
 | avg_total_payments | DOUBLE | Average total payments received |
@@ -172,7 +177,8 @@ All services used are **AWS Free Tier eligible**:
 - Infrastructure-as-code with AWS SAM
 - Data validation and schema enforcement
 - Partitioned data lake storage patterns
-- Unit testing with pytest and moto
+- Unit testing with pytest
+- CI/CD with GitHub Actions
 
 ---
 
