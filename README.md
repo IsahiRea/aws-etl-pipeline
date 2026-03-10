@@ -1,15 +1,25 @@
 # Serverless ETL Pipeline with AWS Glue, S3, and Athena
 
-A fully automated, serverless data pipeline that ingests raw data, transforms it using AWS Glue, catalogs it, and enables SQL querying via Amazon Athena — triggered automatically by S3 file uploads via AWS Lambda.
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+![AWS SAM](https://img.shields.io/badge/IaC-AWS%20SAM-orange)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+
+A fully automated, serverless data pipeline that ingests raw data, transforms it using AWS Glue (PySpark), catalogs it, and enables SQL querying via Amazon Athena — triggered automatically by S3 file uploads via AWS Lambda.
 
 ---
 
 ## Architecture
 
-```
-Raw CSV/JSON → S3 (raw/) → Lambda Trigger → Glue ETL Job → S3 (processed/) → Athena → QuickSight / Power BI
-                                                               ↓
-                                                        Glue Data Catalog
+```mermaid
+flowchart LR
+    A[CSV/JSON Upload] --> B[S3 Raw Bucket\nincoming/]
+    B -->|S3 Event| C[Lambda\ntrigger_glue.py]
+    C -->|StartJobRun| D[Glue ETL Job\netl_transform.py]
+    D --> E[S3 Processed Bucket\ndata/state=XX/]
+    D --> F[Glue Data Catalog]
+    F --> G[Amazon Athena]
+    E --> G
+    G --> H[QuickSight / Power BI]
 ```
 
 ---
@@ -18,12 +28,12 @@ Raw CSV/JSON → S3 (raw/) → Lambda Trigger → Glue ETL Job → S3 (processed
 
 | Service | Role |
 |---|---|
-| **Amazon S3** | Raw and processed data storage |
-| **AWS Glue** | ETL jobs + Data Catalog |
-| **AWS Lambda** | Trigger Glue job on S3 file upload |
-| **Amazon Athena** | SQL querying on processed data |
-| **Amazon QuickSight** | Data visualization (optional) |
-| **Python / PySpark** | Glue ETL script language |
+| **Amazon S3** | Raw and processed data storage (data lake) |
+| **AWS Glue** | PySpark ETL jobs + Data Catalog |
+| **AWS Lambda** | Event-driven trigger on S3 upload |
+| **Amazon Athena** | Serverless SQL querying on processed data |
+| **AWS SAM** | Infrastructure-as-code deployment |
+| **Python / PySpark** | ETL script language |
 
 ---
 
@@ -31,98 +41,138 @@ Raw CSV/JSON → S3 (raw/) → Lambda Trigger → Glue ETL Job → S3 (processed
 
 ```
 aws-etl-pipeline/
-├── data/
-│   └── raw/                    # Sample input datasets (CSV)
 ├── glue_jobs/
-│   └── etl_transform.py        # PySpark ETL script for AWS Glue
+│   └── etl_transform.py        # PySpark ETL: clean, validate, partition, write Parquet
 ├── lambda/
-│   └── trigger_glue.py         # Lambda function to trigger Glue on S3 upload
+│   └── trigger_glue.py         # Lambda: trigger Glue on S3 upload
 ├── athena_queries/
-│   ├── create_table.sql        # Create external table in Athena
+│   ├── create_table.sql        # Partitioned external table DDL
 │   └── sample_queries.sql      # Example analytical queries
+├── tests/
+│   ├── test_lambda_handler.py  # Lambda unit tests (mock Glue client)
+│   └── test_etl_transform.py   # PySpark transform tests (local SparkSession)
+├── data/raw/
+│   └── sample.csv              # Synthetic sample data for testing
 ├── docs/
 │   └── setup_guide.md          # Step-by-step AWS setup instructions
+├── template.yaml               # SAM template (full IaC)
 ├── requirements.txt
-└── README.md
+└── requirements-dev.txt
 ```
 
 ---
 
 ## Dataset
 
-This project uses publicly available **CMS Medicare Provider Data** (or substitute any CSV from [data.gov](https://data.gov)):
-- Download: https://data.cms.gov/provider-summary-by-type-of-service
-- Place CSV files in `data/raw/` before uploading to S3
+This project includes **synthetic sample data** (`data/raw/sample.csv`) for local testing. The schema mirrors the publicly available [CMS Medicare Provider Data](https://data.cms.gov/provider-summary-by-type-of-service):
+
+| Column | Type | Description |
+|---|---|---|
+| provider_id | STRING | Unique provider identifier |
+| provider_name | STRING | Hospital/facility name |
+| state | STRING | Two-letter state code (partition key) |
+| total_discharges | INT | Number of patient discharges |
+| avg_covered_charges | DOUBLE | Average charges billed |
+| avg_total_payments | DOUBLE | Average total payments received |
+| avg_medicare_payments | DOUBLE | Average Medicare payments |
+
+To use real data, download from [data.gov](https://data.gov) and place CSVs in `data/raw/`.
 
 ---
 
-## Setup & Deployment
+## Deployment
 
-### Prerequisites
-- AWS Account (free tier eligible)
-- AWS CLI configured (`aws configure`)
-- Python 3.9+
-- IAM roles for Glue and Lambda (see `docs/setup_guide.md`)
+### Option A: SAM (Recommended)
 
-### 1. Create S3 Buckets
+Requires [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
+
 ```bash
-aws s3 mb s3://your-etl-pipeline-raw
-aws s3 mb s3://your-etl-pipeline-processed
+sam build
+sam deploy --guided
 ```
 
-### 2. Upload the Glue ETL Script
+This creates all resources: S3 buckets, Lambda function with S3 trigger, Glue job, Glue database, Glue crawler, and IAM roles.
+
+### Option B: Manual CLI
+
+See `docs/setup_guide.md` for step-by-step AWS CLI commands.
+
+---
+
+## Local Development
+
+### Setup
+
 ```bash
-aws s3 cp glue_jobs/etl_transform.py s3://your-etl-pipeline-raw/scripts/
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
 ```
 
-### 3. Deploy the Lambda Function
+### Run Tests
+
 ```bash
-cd lambda
-zip trigger_glue.zip trigger_glue.py
-aws lambda create-function \
-  --function-name TriggerGlueETL \
-  --runtime python3.9 \
-  --handler trigger_glue.lambda_handler \
-  --zip-file fileb://trigger_glue.zip \
-  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/LambdaGlueRole
+# All tests
+python -m pytest
+
+# Lambda tests only
+python -m pytest tests/test_lambda_handler.py -v
+
+# ETL transform tests only (requires Java + PySpark)
+python -m pytest tests/test_etl_transform.py -v
 ```
 
-### 4. Set S3 Trigger on Lambda
-```bash
-aws s3api put-bucket-notification-configuration \
-  --bucket your-etl-pipeline-raw \
-  --notification-configuration file://docs/s3_notification.json
-```
-
-### 5. Create Glue Crawler & Database
-```bash
-aws glue create-database --database-input '{"Name": "etl_pipeline_db"}'
-```
-Then run the crawler via the AWS Console or CLI to populate the Glue Data Catalog.
-
-### 6. Query with Athena
-Run the SQL in `athena_queries/create_table.sql`, then explore with `sample_queries.sql`.
+Lambda tests use `unittest.mock` to patch the Glue client — no AWS credentials needed. ETL tests use a local SparkSession (requires Java runtime).
 
 ---
 
 ## Pipeline Walkthrough
 
-1. **Upload** a CSV file to `s3://your-etl-pipeline-raw/incoming/`
-2. **Lambda** detects the upload and triggers the Glue ETL job
-3. **Glue** reads the raw CSV, cleans/transforms the data using PySpark
-4. **Processed Parquet files** are written to `s3://your-etl-pipeline-processed/`
+1. **Upload** a CSV file to `s3://<raw-bucket>/incoming/`
+2. **Lambda** detects the upload event and triggers the Glue ETL job
+3. **Glue** reads the raw CSV, validates the schema, cleans/transforms with PySpark
+4. **Processed Parquet files** are written to `s3://<processed-bucket>/data/state=XX/` (partitioned by state)
 5. **Athena** queries the processed data using the Glue Data Catalog
 6. **QuickSight / Power BI** connects to Athena for visualization
 
 ---
 
+## ETL Transform Details
+
+The Glue job (`glue_jobs/etl_transform.py`) performs:
+
+1. **Schema validation** — Fails fast if required columns are missing
+2. **Null removal** — Drops rows where all values are null
+3. **Column normalization** — Lowercase, spaces/hyphens to underscores
+4. **Metadata enrichment** — Adds `_etl_processed_at` timestamp and `_etl_source` path
+5. **Deduplication** — Removes exact duplicate rows
+6. **Partitioned output** — Writes Snappy-compressed Parquet partitioned by `state`
+
+---
+
+## Cost Estimate
+
+All services used are **AWS Free Tier eligible**:
+
+| Service | Free Tier | When Costs Start |
+|---|---|---|
+| S3 | 5 GB storage, 20K GET, 2K PUT/month | Beyond storage/request limits |
+| Lambda | 1M requests, 400K GB-seconds/month | Unlikely for this pipeline's volume |
+| Glue | No free tier for ETL jobs | ~$0.44/DPU-hour (minimum 2 DPU, 10 min) |
+| Athena | 5 TB scanned/month (first 12 months) | $5 per TB scanned after |
+
+**Note:** Glue ETL jobs are the primary cost driver. For development, use the smallest worker configuration (2x G.1X in the SAM template).
+
+---
+
 ## Skills Demonstrated
 
-- Serverless architecture design on AWS
+- Serverless architecture design on AWS (S3, Lambda, Glue, Athena)
 - ETL pipeline development with PySpark
-- Data cataloging and schema management
-- Infrastructure automation with AWS CLI
-- SQL analytics with Amazon Athena
+- Infrastructure-as-code with AWS SAM
+- Data validation and schema enforcement
+- Partitioned data lake storage patterns
+- Unit testing with pytest and moto
 
 ---
 
