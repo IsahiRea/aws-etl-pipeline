@@ -1,0 +1,6 @@
+provider_id,provider_name,state,total_discharges,avg_covered_charges,avg_total_payments,avg_medicare_payments
+10001,General Hospital,TX,120,18500.00,9200.00,7800.00
+10002,St. Mary Medical Center,CA,95,22000.00,11000.00,9500.00
+10003,Riverside Health System,FL,200,15000.00,8000.00,6700.00
+10004,Mountain View Hospital,CO,60,30000.00,14000.00,12000.00
+10005,Lakeshore Medical,IL,150,17500.00,9800.00,8100.00
