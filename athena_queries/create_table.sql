@@ -5,15 +5,21 @@
 CREATE DATABASE IF NOT EXISTS etl_pipeline_db;
 
 CREATE EXTERNAL TABLE IF NOT EXISTS etl_pipeline_db.processed_data (
-    -- Update these columns to match your actual dataset schema
-    provider_id         STRING,
-    provider_name       STRING,
-    total_discharges    INT,
-    avg_covered_charges DOUBLE,
-    avg_total_payments  DOUBLE,
+    provider_id           STRING,
+    provider_name         STRING,
+    provider_city         STRING,
+    provider_street       STRING,
+    provider_zip          STRING,
+    provider_ruca         STRING,
+    provider_ruca_desc    STRING,
+    drg_code              STRING,
+    drg_description       STRING,
+    total_discharges      INT,
+    avg_covered_charges   DOUBLE,
+    avg_total_payments    DOUBLE,
     avg_medicare_payments DOUBLE,
-    _etl_processed_at   TIMESTAMP,
-    _etl_source         STRING
+    _etl_processed_at     TIMESTAMP,
+    _etl_source           STRING
 )
 PARTITIONED BY (state STRING)
 STORED AS PARQUET

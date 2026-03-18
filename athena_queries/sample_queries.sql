@@ -31,7 +31,18 @@ FROM etl_pipeline_db.processed_data
 GROUP BY state
 ORDER BY avg_payment_gap DESC;
 
--- 5. Count of records processed per ETL run
+-- 5. Top 10 DRGs by total discharges nationwide
+SELECT
+    drg_code,
+    drg_description,
+    SUM(total_discharges) AS total_discharges,
+    ROUND(AVG(avg_medicare_payments), 2) AS avg_medicare_payments
+FROM etl_pipeline_db.processed_data
+GROUP BY drg_code, drg_description
+ORDER BY total_discharges DESC
+LIMIT 10;
+
+-- 6. Count of records processed per ETL run
 SELECT
     DATE_TRUNC('minute', _etl_processed_at) AS etl_run_time,
     COUNT(*) AS records_processed
