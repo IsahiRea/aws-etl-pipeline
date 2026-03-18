@@ -8,14 +8,16 @@ Parameters:
     Default: etl-pipeline
   GlueScriptBucket:
     Type: String
-    Default: ""
+    Default: ''
     Description: S3 bucket for Glue ETL script. Defaults to the raw bucket if empty.
   GlueScriptKey:
     Type: String
     Default: scripts/etl_transform.py
 
 Conditions:
-  UseDefaultScriptBucket: !Equals [!Ref GlueScriptBucket, ""]
+  UseDefaultScriptBucket: !Equals
+    - !Ref GlueScriptBucket
+    - ''
 
 Globals:
   Function:
@@ -28,23 +30,23 @@ Resources:
   RawBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${ProjectName}-raw-${AWS::AccountId}"
+      BucketName: !Sub ${ProjectName}-raw-${AWS::AccountId}
 
   ProcessedBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${ProjectName}-processed-${AWS::AccountId}"
+      BucketName: !Sub ${ProjectName}-processed-${AWS::AccountId}
 
   # ── Lambda Function ──────────────────────────────────────────
   TriggerGlueFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub "${ProjectName}-trigger-glue"
+      FunctionName: !Sub ${ProjectName}-trigger-glue
       Handler: trigger_glue.lambda_handler
       CodeUri: lambda/
       Environment:
         Variables:
-          GLUE_JOB_NAME: !Sub "${ProjectName}-job"
+          GLUE_JOB_NAME: !Sub ${ProjectName}-job
           RAW_BUCKET: !Ref RawBucket
           PROCESSED_BUCKET: !Ref ProcessedBucket
       Policies:
@@ -52,7 +54,7 @@ Resources:
             - Effect: Allow
               Action:
                 - glue:StartJobRun
-              Resource: !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/${ProjectName}-job"
+              Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/${ProjectName}-job
       Events:
         S3Upload:
           Type: S3
@@ -69,7 +71,7 @@ Resources:
   GlueJobRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ProjectName}-glue-role"
+      RoleName: !Sub ${ProjectName}-glue-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -91,9 +93,9 @@ Resources:
                   - s3:ListBucket
                 Resource:
                   - !GetAtt RawBucket.Arn
-                  - !Sub "${RawBucket.Arn}/*"
+                  - !Sub ${RawBucket.Arn}/*
                   - !GetAtt ProcessedBucket.Arn
-                  - !Sub "${ProcessedBucket.Arn}/*"
+                  - !Sub ${ProcessedBucket.Arn}/*
               - !If
                 - UseDefaultScriptBucket
                 - !Ref AWS::NoValue
@@ -102,14 +104,14 @@ Resources:
                     - s3:GetObject
                     - s3:ListBucket
                   Resource:
-                    - !Sub "arn:aws:s3:::${GlueScriptBucket}"
-                    - !Sub "arn:aws:s3:::${GlueScriptBucket}/*"
+                    - !Sub arn:aws:s3:::${GlueScriptBucket}
+                    - !Sub arn:aws:s3:::${GlueScriptBucket}/*
 
   # ── Glue Job ─────────────────────────────────────────────────
   GlueETLJob:
     Type: AWS::Glue::Job
     Properties:
-      Name: !Sub "${ProjectName}-job"
+      Name: !Sub ${ProjectName}-job
       Role: !GetAtt GlueJobRole.Arn
       GlueVersion: '4.0'
       WorkerType: G.1X
@@ -117,18 +119,18 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !If
-            - UseDefaultScriptBucket
-            - !Sub "s3://${RawBucket}/${GlueScriptKey}"
-            - !Sub "s3://${GlueScriptBucket}/${GlueScriptKey}"
+          - UseDefaultScriptBucket
+          - !Sub s3://${RawBucket}/${GlueScriptKey}
+          - !Sub s3://${GlueScriptBucket}/${GlueScriptKey}
         PythonVersion: '3'
       DefaultArguments:
-        "--raw_bucket": !Ref RawBucket
-        "--processed_bucket": !Ref ProcessedBucket
-        "--catalog_database": !Ref GlueDatabase
-        "--catalog_table": processed_data
-        "--job-language": python
-        "--job-bookmark-option": job-bookmark-enable
-        "--enable-glue-datacatalog": "true"
+        '--raw_bucket': !Ref RawBucket
+        '--processed_bucket': !Ref ProcessedBucket
+        '--catalog_database': !Ref GlueDatabase
+        '--catalog_table': processed_data
+        '--job-language': python
+        '--job-bookmark-option': job-bookmark-enable
+        '--enable-glue-datacatalog': 'true'
 
   # ── Glue Database ────────────────────────────────────────────
   GlueDatabase:
@@ -138,16 +140,33 @@ Resources:
       DatabaseInput:
         Name: etl_pipeline_db
 
+  # ── Athena ────────────────────────────────────────────────────
+  AthenaResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-athena-results-${AWS::AccountId}
+
+  AthenaWorkGroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !Sub ${ProjectName}-workgroup
+      State: ENABLED
+      WorkGroupConfiguration:
+        ResultConfiguration:
+          OutputLocation: !Sub s3://${AthenaResultsBucket}/query-results/
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+
   # ── Glue Crawler ─────────────────────────────────────────────
   GlueCrawler:
     Type: AWS::Glue::Crawler
     Properties:
-      Name: !Sub "${ProjectName}-crawler"
+      Name: !Sub ${ProjectName}-crawler
       Role: !GetAtt GlueJobRole.Arn
       DatabaseName: !Ref GlueDatabase
       Targets:
         S3Targets:
-          - Path: !Sub "s3://${ProcessedBucket}/data/"
+          - Path: !Sub s3://${ProcessedBucket}/data/
 
 Outputs:
   RawBucketName:
@@ -158,3 +177,7 @@ Outputs:
     Value: !GetAtt TriggerGlueFunction.Arn
   GlueJobName:
     Value: !Ref GlueETLJob
+  AthenaResultsBucketName:
+    Value: !Ref AthenaResultsBucket
+  AthenaWorkGroupName:
+    Value: !Ref AthenaWorkGroup
