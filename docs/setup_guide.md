@@ -13,6 +13,19 @@ sam deploy --guided
 
 This creates all resources automatically: S3 buckets, Lambda function with S3 trigger, Glue job, Glue database, Glue crawler, and IAM roles.
 
+### SAM Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `ProjectName` | `etl-pipeline` | Prefix for all resource names |
+| `GlueScriptBucket` | *(empty — uses raw bucket)* | S3 bucket for the Glue ETL script. If empty, the script is read from the raw bucket. |
+| `GlueScriptKey` | `scripts/etl_transform.py` | S3 key path to the Glue ETL script |
+
+To use a separate bucket for the Glue script:
+```bash
+sam deploy --guided --parameter-overrides GlueScriptBucket=my-scripts-bucket
+```
+
 After deploying, skip to [Step 8: Query with Athena](#8-query-with-athena) and [Step 9: Test the Full Pipeline](#9-test-the-full-pipeline).
 
 ---

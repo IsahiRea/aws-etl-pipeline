@@ -6,9 +6,16 @@ Parameters:
   ProjectName:
     Type: String
     Default: etl-pipeline
+  GlueScriptBucket:
+    Type: String
+    Default: ""
+    Description: S3 bucket for Glue ETL script. Defaults to the raw bucket if empty.
   GlueScriptKey:
     Type: String
     Default: scripts/etl_transform.py
+
+Conditions:
+  UseDefaultScriptBucket: !Equals [!Ref GlueScriptBucket, ""]
 
 Globals:
   Function:
@@ -87,6 +94,16 @@ Resources:
                   - !Sub "${RawBucket.Arn}/*"
                   - !GetAtt ProcessedBucket.Arn
                   - !Sub "${ProcessedBucket.Arn}/*"
+              - !If
+                - UseDefaultScriptBucket
+                - !Ref AWS::NoValue
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:ListBucket
+                  Resource:
+                    - !Sub "arn:aws:s3:::${GlueScriptBucket}"
+                    - !Sub "arn:aws:s3:::${GlueScriptBucket}/*"
 
   # ── Glue Job ─────────────────────────────────────────────────
   GlueETLJob:
@@ -99,7 +116,10 @@ Resources:
       NumberOfWorkers: 2
       Command:
         Name: glueetl
-        ScriptLocation: !Sub "s3://${RawBucket}/${GlueScriptKey}"
+        ScriptLocation: !If
+            - UseDefaultScriptBucket
+            - !Sub "s3://${RawBucket}/${GlueScriptKey}"
+            - !Sub "s3://${GlueScriptBucket}/${GlueScriptKey}"
         PythonVersion: '3'
       DefaultArguments:
         "--raw_bucket": !Ref RawBucket
