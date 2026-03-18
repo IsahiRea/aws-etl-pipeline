@@ -30,33 +30,43 @@ def spark():
     yield _spark_session
 
 
-def normalize_column_name(col_name):
-    """Mirror of the function in etl_transform.py."""
-    return col_name.strip().lower().replace(" ", "_").replace("-", "_")
+# CMS column mapping (mirrors COLUMN_MAPPING in etl_transform.py)
+COLUMN_MAPPING = [
+    ("Rndrng_Prvdr_CCN", "string", "provider_id", "string"),
+    ("Rndrng_Prvdr_Org_Name", "string", "provider_name", "string"),
+    ("Rndrng_Prvdr_City", "string", "provider_city", "string"),
+    ("Rndrng_Prvdr_St", "string", "provider_street", "string"),
+    ("Rndrng_Prvdr_State_Abrvtn", "string", "state", "string"),
+    ("Rndrng_Prvdr_Zip5", "string", "provider_zip", "string"),
+    ("Rndrng_Prvdr_RUCA", "string", "provider_ruca", "string"),
+    ("Rndrng_Prvdr_RUCA_Desc", "string", "provider_ruca_desc", "string"),
+    ("DRG_Cd", "string", "drg_code", "string"),
+    ("DRG_Desc", "string", "drg_description", "string"),
+    ("Tot_Dschrgs", "string", "total_discharges", "int"),
+    ("Avg_Submtd_Cvrd_Chrg", "string", "avg_covered_charges", "double"),
+    ("Avg_Tot_Pymt_Amt", "string", "avg_total_payments", "double"),
+    ("Avg_Mdcr_Pymt_Amt", "string", "avg_medicare_payments", "double"),
+]
 
 
 # --- Pure-Python tests (always run) ---
 
 
-def test_normalize_column_name():
-    assert normalize_column_name("Provider Name") == "provider_name"
-    assert normalize_column_name("  State  ") == "state"
-    assert normalize_column_name("avg-covered-charges") == "avg_covered_charges"
-    assert normalize_column_name("already_clean") == "already_clean"
+def test_column_mapping_has_no_duplicate_targets():
+    targets = [m[2] for m in COLUMN_MAPPING]
+    assert len(targets) == len(set(targets))
 
 
-def test_schema_validation_catches_missing_columns():
-    required = ["provider_id", "provider_name", "state"]
-    actual = ["provider_id", "provider_name"]
-    missing = [col for col in required if col not in actual]
-    assert missing == ["state"]
+def test_column_mapping_has_no_duplicate_sources():
+    sources = [m[0] for m in COLUMN_MAPPING]
+    assert len(sources) == len(set(sources))
 
 
-def test_schema_validation_passes_with_all_columns():
-    required = ["provider_id", "provider_name", "state"]
-    actual = ["provider_id", "provider_name", "state", "extra_col"]
-    missing = [col for col in required if col not in actual]
-    assert missing == []
+def test_column_mapping_contains_required_fields():
+    targets = {m[2] for m in COLUMN_MAPPING}
+    required = {"provider_id", "provider_name", "state", "total_discharges",
+                "avg_covered_charges", "avg_total_payments", "avg_medicare_payments"}
+    assert required.issubset(targets)
 
 
 # --- Spark-dependent tests (skipped when Java unavailable) ---
@@ -94,13 +104,15 @@ def test_keeps_partial_null_rows(spark):
 
 
 @requires_spark
-def test_column_normalization_applied(spark):
+def test_column_rename_via_mapping(spark):
+    """Simulate what ApplyMapping does: rename CMS columns to pipeline names."""
     df = spark.createDataFrame(
-        [("10001", "Hospital A")],
-        ["Provider ID", "Provider Name"],
+        [("010001", "Hospital A", "TX")],
+        ["Rndrng_Prvdr_CCN", "Rndrng_Prvdr_Org_Name", "Rndrng_Prvdr_State_Abrvtn"],
     )
-    normalized = df.toDF(*[normalize_column_name(c) for c in df.columns])
-    assert normalized.columns == ["provider_id", "provider_name"]
+    renamed = df.toDF("provider_id", "provider_name", "state")
+    assert renamed.columns == ["provider_id", "provider_name", "state"]
+    assert renamed.first()["provider_id"] == "010001"
 
 
 @requires_spark

@@ -1,6 +1,6 @@
-provider_id,provider_name,state,total_discharges,avg_covered_charges,avg_total_payments,avg_medicare_payments
-10001,General Hospital,TX,120,18500.00,9200.00,7800.00
-10002,St. Mary Medical Center,CA,95,22000.00,11000.00,9500.00
-10003,Riverside Health System,FL,200,15000.00,8000.00,6700.00
-10004,Mountain View Hospital,CO,60,30000.00,14000.00,12000.00
-10005,Lakeshore Medical,IL,150,17500.00,9800.00,8100.00
+Rndrng_Prvdr_CCN,Rndrng_Prvdr_Org_Name,Rndrng_Prvdr_City,Rndrng_Prvdr_St,Rndrng_Prvdr_State_FIPS,Rndrng_Prvdr_Zip5,Rndrng_Prvdr_State_Abrvtn,Rndrng_Prvdr_RUCA,Rndrng_Prvdr_RUCA_Desc,DRG_Cd,DRG_Desc,Tot_Dschrgs,Avg_Submtd_Cvrd_Chrg,Avg_Tot_Pymt_Amt,Avg_Mdcr_Pymt_Amt
+010001,General Hospital,Springfield,123 Main St,17,62701,TX,1,Metropolitan area core,003,ECMO OR TRACHEOSTOMY WITH MV >96 HOURS,120,18500.00,9200.00,7800.00
+010002,St. Mary Medical Center,Los Angeles,456 Oak Ave,06,90001,CA,1,Metropolitan area core,065,INTRACRANIAL HEMORRHAGE OR CEREBRAL INFARCTION,95,22000.00,11000.00,9500.00
+010003,Riverside Health System,Miami,789 Palm Blvd,12,33101,FL,1,Metropolitan area core,190,CHRONIC OBSTRUCTIVE PULMONARY DISEASE,200,15000.00,8000.00,6700.00
+010004,Mountain View Hospital,Denver,321 Peak Rd,08,80201,CO,1,Metropolitan area core,291,HEART FAILURE AND SHOCK WITH MCC,60,30000.00,14000.00,12000.00
+010005,Lakeshore Medical,Chicago,654 Lake Dr,17,60601,IL,1,Metropolitan area core,470,MAJOR HIP AND KNEE JOINT REPLACEMENT,150,17500.00,9800.00,8100.00
