@@ -104,7 +104,11 @@ Resources:
       DefaultArguments:
         "--raw_bucket": !Ref RawBucket
         "--processed_bucket": !Ref ProcessedBucket
+        "--catalog_database": !Ref GlueDatabase
+        "--catalog_table": processed_data
         "--job-language": python
+        "--job-bookmark-option": job-bookmark-enable
+        "--enable-glue-datacatalog": "true"
 
   # ── Glue Database ────────────────────────────────────────────
   GlueDatabase:
