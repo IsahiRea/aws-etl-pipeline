@@ -27,6 +27,9 @@ metastore_db/
 derby.log
 spark-warehouse/
 
+# Large data files (download from CMS — see README)
+data/raw/cms_medicare_inpatient_*.csv
+
 # OS
 .DS_Store
 Thumbs.db

@@ -79,6 +79,10 @@ Via AWS Console:
 8. Add job parameters:
    - `--raw_bucket` → `your-etl-pipeline-raw`
    - `--processed_bucket` → `your-etl-pipeline-processed`
+   - `--catalog_database` → `etl_pipeline_db`
+   - `--catalog_table` → `processed_data`
+   - `--job-bookmark-option` → `job-bookmark-enable`
+   - `--enable-glue-datacatalog` → `true`
 
 ---
 
@@ -110,12 +114,11 @@ Via AWS Console:
 
 ---
 
-## 7. Run the Glue Crawler
+## 7. Glue Data Catalog
 
-1. Go to **AWS Glue → Crawlers → Create Crawler**
-2. Data source: `s3://your-etl-pipeline-processed/data/`
-3. Database: `etl_pipeline_db`
-4. Run the crawler to populate the Glue Data Catalog
+The ETL job uses `getSink` with `enableUpdateCatalog=True`, which automatically creates and updates the `etl_pipeline_db.processed_data` table in the Glue Data Catalog after each run. No manual crawler run is needed.
+
+A Glue Crawler is still configured in the SAM template as a fallback — you can run it manually if the catalog table needs to be re-synced.
 
 ---
 
@@ -123,7 +126,7 @@ Via AWS Console:
 
 1. Go to **Amazon Athena → Query Editor**
 2. Set output location: `s3://your-etl-pipeline-processed/athena-results/`
-3. Run `athena_queries/create_table.sql` (creates the partitioned external table)
+3. The table `etl_pipeline_db.processed_data` should already exist (auto-created by the Glue job). If not, run `athena_queries/create_table.sql`.
 4. Run `MSCK REPAIR TABLE etl_pipeline_db.processed_data;` to discover partition directories (`state=XX/`)
 5. Run queries from `athena_queries/sample_queries.sql`
 
